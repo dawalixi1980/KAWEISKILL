@@ -1,0 +1,9 @@
+# 学习/教学过程中产生的 Wiki 项目（可选，按需删除本文件）
+# 建库脚本生成的脚手架目录示例：
+# 我的微积分/
+node_modules/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+Thumbs.db
