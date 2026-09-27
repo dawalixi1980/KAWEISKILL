@@ -4,9 +4,117 @@ DeepSeek Harness / Claude Agent Skills 集合。
 
 ## 内容
 
-| Skill | 说明 |
+| Skill | 来源 | 说明 |
+|---|---|---|
+| [`learn-skill/`](learn-skill/SKILL.md) | 自研 | **学习架构 D v4**：把一门系统性学问压成「一个顶层整体 ＋ 一个贯穿地基元素」，并用「连结关系图」把二者钉在一起。含建库脚本、一体知识点单元模板、5 阶段学习路径（第 0 → 0.5 → 1 → 2 遍 ＋ 应用穿针）、1/3/7/30 天间隔复习、缺口账本、以及图片资料的多模态摄入规范。 |
+| [`lexiang/`](lexiang/) | **腾讯乐享官方**（`@lexiang/skills` v1.1.2，MIT） | **乐享 AI 知识库 MCP 技能包**（6 个 skill）：配置向导、搜索阅读、文档写入、Block 编辑、文件上传下载、外部数据源导入。详见下方「[lexiang — 乐享 AI 知识库](#lexiang--乐享-ai-知识库)」。 |
+
+---
+
+# lexiang — 乐享 AI 知识库
+
+> ⚠️ **来源声明**：`lexiang/` 下的 6 个 skill 是 **腾讯乐享官方发布的 `@lexiang/skills` 包（v1.1.2，MIT 许可）**，此处为原样收录，**非本仓库原创**。
+> 官方安装方式：`npx @lexiang/skills install`
+
+## 这是什么
+
+腾讯乐享（lexiangla.com）知识库的 **MCP 技能包**。它让 AI Agent 能**读写**企业的乐享知识库 —— 不只是"知道有哪些文件"，而是**能读到文件正文、能创建和编辑文档**。
+
+## 六个 skill
+
+| Skill | 职责 |
 |---|---|
-| [`learn-skill/`](learn-skill/SKILL.md) | **学习架构 D v4**：把一门系统性学问压成「一个顶层整体 ＋ 一个贯穿地基元素」，并用「连结关系图」把二者钉在一起。含建库脚本、一体知识点单元模板、5 阶段学习路径（第 0 → 0.5 → 1 → 2 遍 ＋ 应用穿针）、1/3/7/30 天间隔复习、缺口账本、以及图片资料的多模态摄入规范。 |
+| `lexiang-setup` | **MCP 配置向导** —— 首次配置、Token 管理、连接验证、401 排障、多租户切换 |
+| `lexiang-search` | **搜索与阅读** —— 关键词/语义搜索、知识库浏览、目录导航、文档读取 |
+| `lexiang-writer` | **文档写入** —— 创建页面/文件夹、导入 Markdown/HTML、公众号收藏 |
+| `lexiang-blocks` | **已有页面编辑** —— Block 级创建/更新/删除/移动、Markdown 转 Block |
+| `lexiang-files` | **文件上传下载** —— 三步上传（申请→PUT→确认）、文件详情、下载 |
+| `lexiang-connectors` | **外部数据源** —— 腾讯会议录制导入、iWiki 文档迁移 |
+
+## 安装
+
+```bash
+# 官方方式（推荐，自动检测已安装的 Agent 并复制到对应目录）
+npx @lexiang/skills install
+
+# 或从本仓库手动复制
+# 把 lexiang/ 下的 6 个目录复制到你的 skills 目录，例如：
+#   ~/.agents/skills/      （通用标准）
+#   ~/.dsh/skills/         （DeepSeek Harness）
+#   ~/.claude/skills/      （Claude Code）
+```
+
+## 配置（必做）
+
+乐享 MCP 用 **Bearer Token 静态鉴权**（不涉及 OAuth）。需要两个参数：
+
+| 参数 | 说明 | 从哪拿 |
+|---|---|---|
+| `COMPANY_FROM` | 企业标识（32 位十六进制） | https://lexiangla.com/mcp |
+| `LEXIANG_TOKEN` | 访问令牌（格式 `lxmcp_xxx`） | 同上，登录后生成 |
+
+写入 MCP 配置文件（`~/.mcporter/mcporter.json` 等）：
+
+```json
+{
+  "mcpServers": {
+    "lexiang": {
+      "enabled": true,
+      "url": "https://mcp.lexiang-app.com/mcp?preset=meta&company_from=你的COMPANY_FROM",
+      "transportType": "streamable-http",
+      "headers": {
+        "Authorization": "Bearer 你的LEXIANG_TOKEN"
+      }
+    }
+  }
+}
+```
+
+> 🔒 **安全提醒**：`LEXIANG_TOKEN` 等同账号访问权，**不要提交到任何公开仓库**。本仓库中的 `lexiang-setup/mcp.json` 只含 `${COMPANY_FROM}` / `${LEXIANG_TOKEN}` 占位符。
+
+**Token 过期怎么办**：报 401 时**不需要重新获取 token**，点「续期」即可恢复：
+
+```
+https://lexiangla.com/mcp?company_from=你的COMPANY_FROM
+```
+
+## 能做什么（实测）
+
+连接成功后，乐享 MCP 提供 **78 个工具**，分 20 个类别。关键能力：
+
+| 能力 | 代表工具 | 实测结果 |
+|---|---|---|
+| **读正文**（不只是文件名） | `search_kb_search` | ✅ 返回正文片段，如 `"《公路桥涵设计通用规范》(JTG D60-..."` |
+| **真向量语义检索** | `search_kb_embedding_search` | ✅ 带相似度 score，可设 `threshold`（0-1） |
+| **列知识库 / 目录树** | `space_list_spaces`、`entry_list_children` | ✅ |
+| **创建文档** | `entry_create_entry` | ✅ 实测创建成功 |
+| **Block 级编辑** | `block_update_block`、`block_create_block_descendant` | 21 个工具 |
+| **智能表格 CRUD** | `smartsheet_*` | 14 个工具 |
+| **文件上传** | `file_apply_upload` → PUT → `file_commit_upload` | 三步上传 |
+| **文件版本回滚** | `file_list_revisions`、`file_revert_file` | |
+| **文件翻译** | `translation_apply_file_translation` | |
+| **评论读取** | `comment_list_comments` | |
+
+### 调用要点（踩坑记录）
+
+1. **meta 工具直接调**（`list_tool_categories` / `search_tools` / `get_tool_schema`），**不能走 `call_tool`**
+2. **业务工具必须走 `call_tool`**：`call_tool(tool_name="xxx", arguments={...})`
+3. `search_kb_embedding_search` 的参数是 **`filters.keyword`**，不是顶层 `query`
+4. `entry_set_entry_validity` 用 **`validity_type`**（`force_expire` = 强制失效）
+5. 响应用 **SSE 格式**（`data:` 行），不是纯 JSON
+
+## 对比：乐享 vs IMA
+
+| 能力 | IMA OpenAPI | 乐享 MCP |
+|---|---|---|
+| 读正文 | ❌ 只能匹配文件名 | ✅ 返回正文片段 |
+| 向量语义检索 | ❌ 假语义 | ✅ 真向量 + score + threshold |
+| 创建文档 | ❌ | ✅ |
+| 编辑已有页面 | ❌ | ✅ Block 级 |
+| 智能表格 | ❌ | ✅ 14 个工具 |
+| 文件版本回滚 | ❌ | ✅ |
+| 文件翻译 | ❌ | ✅ |
+| 接口数量 | 10 个 | **78 个** |
 
 ---
 
